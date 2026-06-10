@@ -1,0 +1,91 @@
+/* ── Claude palette + Google minimal structure ── */
+:root {
+  /* Claude brand colours */
+  --cl-copper:   #D97757;
+  --cl-sand:     #E8D5B7;
+  --cl-cream:    #F5F0E8;
+  --cl-rust:     #B85C38;
+  --cl-taupe:    #9B8EA0;
+  --cl-purple:   #7C5FA0;
+  --cl-lavender: #C8B4E0;
+  --cl-charcoal: #2D2B32;
+
+  /* Surface tokens */
+  --bg:          #FAFAF8;
+  --surface:     #FFFFFF;
+  --surface-alt: #F5F2ED;
+  --border:      #E6E1D9;
+  --border-focus:#D97757;
+
+  /* Text tokens */
+  --text:        #4A4540;
+  --text-muted:  #8A7F78;
+  --text-heading:#1C1917;
+
+  /* Accent */
+  --accent:      #D97757;
+  --accent-light:#FAE8DF;
+  --accent-dark: #B85C38;
+
+  /* Status */
+  --green:       #2D6A4F;
+  --green-bg:    #D8F3DC;
+  --red:         #C0392B;
+  --red-bg:      #FADBD8;
+
+  /* Spacing */
+  --radius-sm:   6px;
+  --radius:      12px;
+  --radius-lg:   20px;
+
+  /* Shadows */
+  --shadow-sm:   0 1px 3px rgba(45,43,50,.08), 0 1px 2px rgba(45,43,50,.05);
+  --shadow:      0 4px 12px rgba(45,43,50,.10), 0 1px 4px rgba(45,43,50,.06);
+  --shadow-lg:   0 12px 32px rgba(45,43,50,.12), 0 4px 12px rgba(45,43,50,.07);
+
+  /* Typography */
+  --font-sans:   'Google Sans', 'Noto Sans TC', system-ui, sans-serif;
+  --font-mono:   'Google Sans Mono', ui-monospace, monospace;
+
+  font-family:   var(--font-sans);
+  font-size:     16px;
+  line-height:   1.6;
+  color:         var(--text);
+  background:    var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100svh;
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1,h2,h3 {
+  font-family: var(--font-sans);
+  color: var(--text-heading);
+  margin: 0;
+}
+
+p { margin: 0; }
+
+button {
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+
+textarea, input {
+  font-family: var(--font-sans);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }

@@ -1,0 +1,6 @@
+flask>=3.0
+flask-cors>=4.0
+torch>=2.0
+transformers>=4.40
+google-generativeai>=0.7
+python-dotenv>=1.0

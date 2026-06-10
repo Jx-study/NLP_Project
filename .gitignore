@@ -1,0 +1,17 @@
+*.md
+!README.md
+.env
+dataset/processed
+!dataset/processed/adversarial_tone.csv
+models/
+
+build/
+frontend/dist/
+.env
+
+__pycache__/
+venv/
+.venv/
+*.pyc
+*.pyo
+*.log
