@@ -45,7 +45,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
-from captum.attr import LayerIntegratedGradients
+from captum.attr import IntegratedGradients, LayerIntegratedGradients
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 # PowerShell / Windows 終端中文輸出避免 UnicodeEncodeError
@@ -59,11 +59,12 @@ ROOT = Path(__file__).resolve().parent
 RESULTS = ROOT.parent / "results"
 RESULTS.mkdir(exist_ok=True)
 
-# 同 probe_jing：顯式模型路徑，存在才跑（G8 未訓練時自動 skip）
+# 同 probe_jing：顯式模型路徑，存在才跑（未訓練的自動 skip）
 MODELS = {
     "G5": ROOT.parent / "models" / "xlm-roberta-clickbait",        # augmentation only
     "G7": ROOT.parent / "models" / "xlm-roberta-clickbait-g7",     # + adversarial_tone
     "G8": ROOT.parent / "models" / "xlm-roberta-clickbait-g8",     # + adversarial_g8
+    "G9": ROOT.parent / "models" / "xlm-roberta-clickbait-g9-dualtower",  # 雙塔（含 classifier_head.pt）
 }
 
 CLICKBAIT_IDX = 1       # label=1 = clickbait
@@ -112,17 +113,47 @@ def check_memory():
         print(f"   記憶體偏低，建議關閉其他程式後再跑，或一次只跑一個 --task。")
 
 
+def _is_dualtower(path):
+    """雙塔 checkpoint 判別特徵：同目錄存在 classifier_head.pt。"""
+    return (Path(path) / "classifier_head.pt").exists()
+
+
 class Explainer:
-    """單一模型的 IG + occlusion 解釋器。用 close() 釋放記憶體。"""
+    """單一模型的 IG + occlusion 解釋器。用 close() 釋放記憶體。
+
+    支援兩種架構，對外介面（attribute / occlude_title / predict_proba）相同：
+      - 單塔（G5/G7/G8）：tokenizer(title, content) 拼一條序列，IG 作用在唯一序列，
+        segment 用 [SEP] 切標題/內文。
+      - 雙塔（G9）：title 與 content 各一條序列。IG 對「要解釋的那一塔」作用、另一塔固定，
+        把兩塔 token 串起來回傳；segment 由『屬於哪一塔』決定（0=title 塔, 1=content 塔），
+        而非靠 [SEP]——這是雙塔與單塔語意對齊的關鍵。
+    """
 
     def __init__(self, name, path):
         self.name = name
+        self.dual = _is_dualtower(path)
         self.tok = AutoTokenizer.from_pretrained(str(path))
-        self.mdl = AutoModelForSequenceClassification.from_pretrained(str(path)).eval()
         self.device = torch.device("cpu")
-        self.mdl.to(self.device)
-        self.emb_layer = self.mdl.get_input_embeddings()   # IG 作用在 word embedding 層
-        self.lig = LayerIntegratedGradients(self._forward, self.emb_layer)
+
+        if self.dual:
+            from dualtower import DualTowerClassifier, TITLE_MAX_LEN, CONTENT_MAX_LEN
+            from transformers import AutoModel
+            self.title_max = TITLE_MAX_LEN
+            self.content_max = CONTENT_MAX_LEN
+            self.mdl = DualTowerClassifier("xlm-roberta-base")
+            self.mdl.encoder = AutoModel.from_pretrained(str(path))
+            self.mdl.classifier.load_state_dict(
+                torch.load(str(Path(path) / "classifier_head.pt"), map_location=self.device)
+            )
+            self.mdl.eval().to(self.device)
+            self.emb_layer = self.mdl.encoder.get_input_embeddings()
+            # 雙塔的 IG forward 依「正在解釋哪一塔」而定，於 attribute 內動態綁定
+            self.lig = None
+        else:
+            self.mdl = AutoModelForSequenceClassification.from_pretrained(str(path)).eval()
+            self.mdl.to(self.device)
+            self.emb_layer = self.mdl.get_input_embeddings()   # IG 作用在 word embedding 層
+            self.lig = LayerIntegratedGradients(self._forward, self.emb_layer)
 
     def close(self):
         del self.mdl, self.lig, self.emb_layer, self.tok
@@ -131,6 +162,29 @@ class Explainer:
     def _forward(self, input_ids, attention_mask):
         return self.mdl(input_ids=input_ids, attention_mask=attention_mask).logits.softmax(dim=-1)
 
+    # ── 雙塔專用：固定一塔、對另一塔的 embeds 做 IG 的 forward ──────────
+    def _dual_forward_embeds(self, var_embeds, var_mask, fixed_embeds, fixed_mask, target_tower):
+        """plain IntegratedGradients 的 forward：var_embeds 是被解釋塔的 word embeddings
+        （IG 對它求梯度），fixed_embeds 是另一塔（固定）。
+
+        為何用 inputs_embeds 而非 LayerIntegratedGradients：雙塔共享同一個 embedding 層，
+        該層在一次前向中被呼叫兩次（title 64 長、content 256 長）。LIG 會把它攔截到的
+        embedding 輸出整批換成插值張量，無法區分是哪一塔的呼叫，導致 256 的插值張量
+        流進 64 長的另一塔 → token_type embedding 維度衝突。改在外部各算 embeds、
+        只把目標塔當 IG input，固定塔走 additional_forward_args，即可乾淨分離。
+
+        IG 內部沿 batch 維擴張 var_embeds 成 (steps×1)，固定塔須同步 expand 對齊 batch。
+        """
+        bsz = var_embeds.shape[0]
+        f_embeds = fixed_embeds.expand(bsz, -1, -1)
+        f_mask = fixed_mask.expand(bsz, -1)
+        v_mask = var_mask.expand(bsz, -1)
+        if target_tower == "title":
+            logits = self.mdl.forward_embeds(var_embeds, v_mask, f_embeds, f_mask)
+        else:
+            logits = self.mdl.forward_embeds(f_embeds, f_mask, var_embeds, v_mask)
+        return logits.softmax(dim=-1)
+
     def _encode(self, title, content):
         # content 可能是 NaN（cu_empty 空內文）或非字串 → 統一轉乾淨字串
         content = "" if not isinstance(content, str) else content
@@ -138,7 +192,24 @@ class Explainer:
         return self.tok(title, content, truncation=True, max_length=MAX_LEN,
                         return_tensors="pt").to(self.device)
 
+    def _encode_dual(self, title, content):
+        content = "" if not isinstance(content, str) else content
+        title = "" if not isinstance(title, str) else title
+        enc_t = self.tok(title, truncation=True, max_length=self.title_max,
+                         padding="max_length", return_tensors="pt").to(self.device)
+        enc_c = self.tok(content, truncation=True, max_length=self.content_max,
+                         padding="max_length", return_tensors="pt").to(self.device)
+        return enc_t, enc_c
+
     def predict_proba(self, title, content):
+        if self.dual:
+            enc_t, enc_c = self._encode_dual(title, content)
+            with torch.no_grad():
+                logits = self.mdl(
+                    title_input_ids=enc_t["input_ids"], title_attention_mask=enc_t["attention_mask"],
+                    content_input_ids=enc_c["input_ids"], content_attention_mask=enc_c["attention_mask"],
+                )
+                return float(logits.softmax(dim=-1)[0, CLICKBAIT_IDX])
         enc = self._encode(title, content)
         with torch.no_grad():
             return float(self.mdl(**enc).logits.softmax(dim=-1)[0, CLICKBAIT_IDX])
@@ -154,8 +225,61 @@ class Explainer:
                 in_content = True
         return seg
 
+    def _attribute_dual(self, title, content):
+        """雙塔 IG：對 title 塔與 content 塔各自做 IG（對方固定），串接回傳。
+
+        seg：0=title 塔 token、1=content 塔 token。pad token 不顯示（attn=0）。
+        """
+        enc_t, enc_c = self._encode_dual(title, content)
+        pad_id = self.tok.pad_token_id
+
+        def embed(ids):
+            return self.emb_layer(ids)
+
+        def ig_one_tower(enc, fixed_enc, target_tower):
+            ids, attn = enc["input_ids"], enc["attention_mask"]
+            # baseline ids：非特殊 token 換 pad，特殊 token 保留
+            base_ids = torch.full_like(ids, pad_id)
+            for special in (self.tok.cls_token_id, self.tok.sep_token_id):
+                if special is not None:
+                    base_ids[ids == special] = special
+            var_embeds = embed(ids)
+            base_embeds = embed(base_ids)
+            fixed_embeds = embed(fixed_enc["input_ids"])
+
+            ig = IntegratedGradients(self._dual_forward_embeds)
+            attrs, delta = ig.attribute(
+                inputs=var_embeds, baselines=base_embeds,
+                additional_forward_args=(attn, fixed_embeds,
+                                         fixed_enc["attention_mask"], target_tower),
+                target=CLICKBAIT_IDX,
+                n_steps=N_STEPS, internal_batch_size=IG_BATCH,
+                return_convergence_delta=True,
+            )
+            tok_attr = attrs.sum(dim=-1).squeeze(0)
+            toks = self.tok.convert_ids_to_tokens(ids.squeeze(0).tolist())
+            # 只保留非 pad token（雙塔 padding 到 max_length，pad 段無意義）
+            keep = [i for i, m in enumerate(attn.squeeze(0).tolist()) if m == 1]
+            del attrs
+            return ([toks[i] for i in keep],
+                    tok_attr[keep].detach(),
+                    float(delta.mean()))
+
+        t_tokens, t_attr, t_delta = ig_one_tower(enc_t, enc_c, "title")
+        c_tokens, c_attr, c_delta = ig_one_tower(enc_c, enc_t, "content")
+
+        tokens = t_tokens + c_tokens
+        attr = torch.cat([t_attr, c_attr])
+        attr = (attr / (attr.norm() + 1e-12)).numpy()
+        seg = [0] * len(t_tokens) + [1] * len(c_tokens)
+        proba = self.predict_proba(title, content)
+        gc.collect()
+        return tokens, attr, proba, float(t_delta + c_delta), seg
+
     def attribute(self, title, content):
         """回傳 (tokens, attr, proba, delta, seg)：token-level IG attribution。"""
+        if self.dual:
+            return self._attribute_dual(title, content)
         enc = self._encode(title, content)
         input_ids, attn = enc["input_ids"], enc["attention_mask"]
         pad_id = self.tok.pad_token_id
@@ -181,6 +305,8 @@ class Explainer:
 
     def occlude_title(self, title, content):
         """只刪標題 token 算 Δp（內文與『竟』翻轉無關，不逐 token 跑長內文）。"""
+        if self.dual:
+            return self._occlude_title_dual(title, content)
         base_p = self.predict_proba(title, content)
         enc = self._encode(title, content)
         ids = enc["input_ids"].squeeze(0).tolist()
@@ -197,6 +323,34 @@ class Explainer:
             with torch.no_grad():
                 p = float(self.mdl(input_ids=sub, attention_mask=torch.ones_like(sub))
                           .logits.softmax(dim=-1)[0, CLICKBAIT_IDX])
+            deltas.append(base_p - p)
+        return tokens, np.array(deltas), base_p, seg
+
+    def _occlude_title_dual(self, title, content):
+        """雙塔版 occlusion：刪標題塔的單一 token（content 塔固定）算 Δp。"""
+        base_p = self.predict_proba(title, content)
+        enc_t, enc_c = self._encode_dual(title, content)
+        t_ids_full = enc_t["input_ids"].squeeze(0).tolist()
+        t_mask = enc_t["attention_mask"].squeeze(0).tolist()
+        c_ids, c_mask = enc_c["input_ids"], enc_c["attention_mask"]
+        specials = set(self.tok.all_special_ids)
+        # 只取非 pad 的標題 token（與 attribute_dual 的顯示對齊）
+        keep = [i for i, m in enumerate(t_mask) if m == 1]
+        tokens = [self.tok.convert_ids_to_tokens([t_ids_full[i]])[0] for i in keep]
+        seg = [0] * len(keep)
+        deltas = []
+        for i in keep:
+            if t_ids_full[i] in specials:
+                deltas.append(0.0)
+                continue
+            kept_ids = [t_ids_full[j] for j in range(len(t_ids_full)) if j != i and t_mask[j] == 1]
+            sub = torch.tensor([kept_ids], device=self.device)
+            with torch.no_grad():
+                logits = self.mdl(
+                    title_input_ids=sub, title_attention_mask=torch.ones_like(sub),
+                    content_input_ids=c_ids, content_attention_mask=c_mask,
+                )
+                p = float(logits.softmax(dim=-1)[0, CLICKBAIT_IDX])
             deltas.append(base_p - p)
         return tokens, np.array(deltas), base_p, seg
 
