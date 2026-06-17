@@ -61,10 +61,10 @@ RESULTS.mkdir(exist_ok=True)
 
 # 同 probe_jing：顯式模型路徑，存在才跑（未訓練的自動 skip）
 MODELS = {
-    "G5": ROOT.parent / "models" / "xlm-roberta-clickbait",        # augmentation only
-    "G7": ROOT.parent / "models" / "xlm-roberta-clickbait-g7",     # + adversarial_tone
-    "G8": ROOT.parent / "models" / "xlm-roberta-clickbait-g8",     # + adversarial_g8
-    "G9": ROOT.parent / "models" / "xlm-roberta-clickbait-g9-dualtower",  # 雙塔（含 classifier_head.pt）
+    "G5":   ROOT.parent / "models" / "xlm-roberta-clickbait",
+    "G7":   ROOT.parent / "models" / "xlm-roberta-clickbait-g7",
+    "G8":   ROOT.parent / "models" / "xlm-roberta-clickbait-g8",
+    "G9":   ROOT.parent / "models" / "xlm-roberta-clickbait-g9-dualtower-run2",
 }
 
 CLICKBAIT_IDX = 1       # label=1 = clickbait
@@ -136,16 +136,10 @@ class Explainer:
         self.device = torch.device("cpu")
 
         if self.dual:
-            from dualtower import DualTowerClassifier, TITLE_MAX_LEN, CONTENT_MAX_LEN
-            from transformers import AutoModel
+            from dualtower import load_dualtower, TITLE_MAX_LEN, CONTENT_MAX_LEN
             self.title_max = TITLE_MAX_LEN
             self.content_max = CONTENT_MAX_LEN
-            self.mdl = DualTowerClassifier("xlm-roberta-base")
-            self.mdl.encoder = AutoModel.from_pretrained(str(path))
-            self.mdl.classifier.load_state_dict(
-                torch.load(str(Path(path) / "classifier_head.pt"), map_location=self.device)
-            )
-            self.mdl.eval().to(self.device)
+            self.mdl = load_dualtower(path, self.device)
             self.emb_layer = self.mdl.encoder.get_input_embeddings()
             # 雙塔的 IG forward 依「正在解釋哪一塔」而定，於 attribute 內動態綁定
             self.lig = None
@@ -235,6 +229,23 @@ class Explainer:
 
         def embed(ids):
             return self.emb_layer(ids)
+
+        # ── Bug B sanity check：forward() vs forward_embeds() 數值一致性 ──────────
+        # IG 走 forward_embeds（pre-extracted embeds 路徑）。對 v1（mean-pool only）已知
+        # 與 forward() 等價；但 v2 + C3（cross_align）路徑未經驗證——IG 會把固定塔 expand
+        # 成非 contiguous 張量餵進 nn.MultiheadAttention，數值是否正確無法靜態確認。
+        # 此處在跑 IG 前先比對兩條路徑：若 v2+C3 路徑數值偏離，立即 fail
+        with torch.no_grad():
+            t_ids, t_m = enc_t["input_ids"], enc_t["attention_mask"]
+            c_ids, c_m = enc_c["input_ids"], enc_c["attention_mask"]
+            logits_ids = self.mdl(t_ids, t_m, c_ids, c_m)
+            logits_emb = self.mdl.forward_embeds(embed(t_ids), t_m, embed(c_ids), c_m)
+            max_diff = (logits_ids - logits_emb).abs().max().item()
+            assert max_diff < 1e-4, (
+                f"[Bug B] forward() vs forward_embeds() 偏離 {max_diff:.2e} (>1e-4)；"
+                f"模型 {self.name} 的 IG 路徑數值不可信，attribution 不可用於報告。"
+                f"（多半是 v2+C3 的 cross-attention 對 expand 後非 contiguous 張量算錯）"
+            )
 
         def ig_one_tower(enc, fixed_enc, target_tower):
             ids, attn = enc["input_ids"], enc["attention_mask"]
