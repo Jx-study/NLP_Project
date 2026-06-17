@@ -2,13 +2,27 @@
 
 本專案旨在建立一個中英文雙語的標題黨偵測與內容破梗系統。系統會先判斷使用者輸入的新聞標題是否具有標題黨特徵；若模型判定為標題黨，則進一步呼叫 Gemini API，根據新聞標題與內文生成一句話破梗，協助使用者在點擊前快速理解文章重點。
 
+## 標題黨的定義
+
+本專案的標題黨**不是指「事件誇張」或「內容離奇」**，而是指**標題與內文之間存在誇張、懸念、遮蔽或誤導**。即使事件離奇，只要標題忠實完整描述，仍視為非標題黨。據此歸納五類特徵：
+
+1. **資訊落差**：標題刻意隱藏關鍵人/事/物/結果，逼讀者點擊解懸念。
+2. **過度誇飾**：極端情緒詞，但事件層級撐不起（史上最、震驚、崩潰）。
+3. **承諾落空**：標題承諾高價值資訊，內文只給常識/空泛/不相稱內容。
+4. **格式化誘餌**：清單、排名、挑釁問句誘點（「第4個你想不到」）。
+5. **軟文／業配**：標題以情感/知性語氣包裝，內文實為行銷軟文/廣告/業配（對應 WCD general-clickbait，T_LABEL=2）。
+
+完整定義、判準與範例見 [Report.md](Report.md) §1.1；逐筆標註規範見 [ANNOTATION_GUIDE.md](ANNOTATION_GUIDE.md)。
+
 ## 專案目標
 
 - 偵測中文與英文新聞標題是否為標題黨。
 - 將中文與英文資料集整理成統一的二元分類格式。
 - 訓練並比較兩種模型：
   - TF-IDF + Logistic Regression baseline
-  - fine-tuned multilingual transformer，預計使用 `xlm-roberta-base`
+  - fine-tuned multilingual transformer，採用 `xlm-roberta-base`
+    （選用理由：跨語言共用表徵、sentence-pair 建模標題–內文落差、不依賴外部斷詞；
+    完整論述與 baseline 實測對照見 [Report.md](Report.md) §2）
 - 建立可互動的 Web 介面。
 - 使用 Flask REST API 串接前端、分類模型與 Gemini API。
 - 對判定為標題黨的文章生成一句話破梗。
@@ -350,14 +364,6 @@ Response：
 
 `gemini_used` 標記此次是否觸發 Gemini 輔助判斷（用於前端顯示 Cascade 標記）。當 Gemini 複核把標題黨判定翻轉為非標題黨時，`is_clickbait` 會更新為 `false` 且不輸出 `spoiler`。
 
-## 目前狀態
-
-- 專案 proposal 已完成。
-- 專案計劃已寫入 `PLAN.md`。
-- 中文 WCD 資料集已放在本機專案資料夾。
-- 英文 Webis-Clickbait-17 資料集已放在 `dataset/baseDataSet/clickbait17-train-170630/`。
-- Phase 1 資料處理 notebook 已建立於 `notebooks/dataset_processing.ipynb`。
-- 統一格式資料已輸出到 `dataset/processed/`。
 
 ## 注意事項
 

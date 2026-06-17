@@ -2,7 +2,7 @@
 !README.md
 .env
 dataset/processed
-!dataset/processed/adversarial_tone.csv
+dataset/raw_scraped/
 models/
 
 build/
