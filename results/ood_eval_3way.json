@@ -1,0 +1,334 @@
+{
+  "G5": {
+    "overall": {
+      "accuracy": 0.6734,
+      "macro_f1": 0.6612,
+      "clickbait_recall": 0.4839,
+      "fp_rate": 0.1371,
+      "n": 248
+    },
+    "per_lang": {
+      "zh": {
+        "accuracy": 0.7339,
+        "macro_f1": 0.7309,
+        "clickbait_recall": 0.629,
+        "fp_rate": 0.1613,
+        "n": 124
+      },
+      "en": {
+        "accuracy": 0.6129,
+        "macro_f1": 0.5814,
+        "clickbait_recall": 0.3387,
+        "fp_rate": 0.1129,
+        "n": 124
+      }
+    },
+    "per_site": {
+      "bbc": {
+        "accuracy": 0.7143,
+        "macro_f1": 0.4167,
+        "clickbait_recall": 0.0,
+        "fp_rate": 0.2308,
+        "n": 14
+      },
+      "buzzfeed": {
+        "accuracy": 0.8438,
+        "macro_f1": 0.8436,
+        "clickbait_recall": 0.875,
+        "fp_rate": 0.1875,
+        "n": 32
+      },
+      "dailymail": {
+        "accuracy": 0.551,
+        "macro_f1": 0.4896,
+        "clickbait_recall": 0.1852,
+        "fp_rate": 0.0,
+        "n": 49
+      },
+      "ettoday": {
+        "accuracy": 0.7273,
+        "macro_f1": 0.7054,
+        "clickbait_recall": 0.4545,
+        "fp_rate": 0.0,
+        "n": 22
+      },
+      "kknews": {
+        "accuracy": 0.6774,
+        "macro_f1": 0.6601,
+        "clickbait_recall": 0.6667,
+        "fp_rate": 0.3,
+        "n": 31
+      },
+      "nypost": {
+        "accuracy": 0.4138,
+        "macro_f1": 0.3655,
+        "clickbait_recall": 0.1111,
+        "fp_rate": 0.0909,
+        "n": 29
+      },
+      "setn": {
+        "accuracy": 0.8,
+        "macro_f1": 0.7995,
+        "clickbait_recall": 0.7391,
+        "fp_rate": 0.1176,
+        "n": 40
+      },
+      "udn": {
+        "accuracy": 0.7097,
+        "macro_f1": 0.6043,
+        "clickbait_recall": 0.4286,
+        "fp_rate": 0.2083,
+        "n": 31
+      }
+    }
+  },
+  "G7": {
+    "overall": {
+      "accuracy": 0.6855,
+      "macro_f1": 0.6743,
+      "clickbait_recall": 0.5,
+      "fp_rate": 0.129,
+      "n": 248
+    },
+    "per_lang": {
+      "zh": {
+        "accuracy": 0.7177,
+        "macro_f1": 0.711,
+        "clickbait_recall": 0.5645,
+        "fp_rate": 0.129,
+        "n": 124
+      },
+      "en": {
+        "accuracy": 0.6532,
+        "macro_f1": 0.636,
+        "clickbait_recall": 0.4355,
+        "fp_rate": 0.129,
+        "n": 124
+      }
+    },
+    "per_site": {
+      "bbc": {
+        "accuracy": 0.7857,
+        "macro_f1": 0.44,
+        "clickbait_recall": 0.0,
+        "fp_rate": 0.1538,
+        "n": 14
+      },
+      "buzzfeed": {
+        "accuracy": 0.8125,
+        "macro_f1": 0.8095,
+        "clickbait_recall": 0.9375,
+        "fp_rate": 0.3125,
+        "n": 32
+      },
+      "dailymail": {
+        "accuracy": 0.6327,
+        "macro_f1": 0.6048,
+        "clickbait_recall": 0.3333,
+        "fp_rate": 0.0,
+        "n": 49
+      },
+      "ettoday": {
+        "accuracy": 0.6818,
+        "macro_f1": 0.646,
+        "clickbait_recall": 0.3636,
+        "fp_rate": 0.0,
+        "n": 22
+      },
+      "kknews": {
+        "accuracy": 0.6452,
+        "macro_f1": 0.6392,
+        "clickbait_recall": 0.5714,
+        "fp_rate": 0.2,
+        "n": 31
+      },
+      "nypost": {
+        "accuracy": 0.4483,
+        "macro_f1": 0.4141,
+        "clickbait_recall": 0.1667,
+        "fp_rate": 0.0909,
+        "n": 29
+      },
+      "setn": {
+        "accuracy": 0.775,
+        "macro_f1": 0.7749,
+        "clickbait_recall": 0.6957,
+        "fp_rate": 0.1176,
+        "n": 40
+      },
+      "udn": {
+        "accuracy": 0.7419,
+        "macro_f1": 0.631,
+        "clickbait_recall": 0.4286,
+        "fp_rate": 0.1667,
+        "n": 31
+      }
+    }
+  },
+  "G8": {
+    "overall": {
+      "accuracy": 0.7419,
+      "macro_f1": 0.7343,
+      "clickbait_recall": 0.5726,
+      "fp_rate": 0.0887,
+      "n": 248
+    },
+    "per_lang": {
+      "zh": {
+        "accuracy": 0.8065,
+        "macro_f1": 0.8046,
+        "clickbait_recall": 0.7097,
+        "fp_rate": 0.0968,
+        "n": 124
+      },
+      "en": {
+        "accuracy": 0.6774,
+        "macro_f1": 0.6574,
+        "clickbait_recall": 0.4355,
+        "fp_rate": 0.0806,
+        "n": 124
+      }
+    },
+    "per_site": {
+      "bbc": {
+        "accuracy": 0.7143,
+        "macro_f1": 0.4167,
+        "clickbait_recall": 0.0,
+        "fp_rate": 0.2308,
+        "n": 14
+      },
+      "buzzfeed": {
+        "accuracy": 0.8438,
+        "macro_f1": 0.8436,
+        "clickbait_recall": 0.8125,
+        "fp_rate": 0.125,
+        "n": 32
+      },
+      "dailymail": {
+        "accuracy": 0.6939,
+        "macro_f1": 0.6806,
+        "clickbait_recall": 0.4444,
+        "fp_rate": 0.0,
+        "n": 49
+      },
+      "ettoday": {
+        "accuracy": 0.7727,
+        "macro_f1": 0.7603,
+        "clickbait_recall": 0.5455,
+        "fp_rate": 0.0,
+        "n": 22
+      },
+      "kknews": {
+        "accuracy": 0.6774,
+        "macro_f1": 0.6688,
+        "clickbait_recall": 0.619,
+        "fp_rate": 0.2,
+        "n": 31
+      },
+      "nypost": {
+        "accuracy": 0.4483,
+        "macro_f1": 0.3895,
+        "clickbait_recall": 0.1111,
+        "fp_rate": 0.0,
+        "n": 29
+      },
+      "setn": {
+        "accuracy": 0.9,
+        "macro_f1": 0.899,
+        "clickbait_recall": 0.8696,
+        "fp_rate": 0.0588,
+        "n": 40
+      },
+      "udn": {
+        "accuracy": 0.8387,
+        "macro_f1": 0.7801,
+        "clickbait_recall": 0.7143,
+        "fp_rate": 0.125,
+        "n": 31
+      }
+    }
+  },
+  "G9": {
+    "overall": {
+      "accuracy": 0.754,
+      "macro_f1": 0.749,
+      "clickbait_recall": 0.6129,
+      "fp_rate": 0.1048,
+      "n": 248
+    },
+    "per_lang": {
+      "zh": {
+        "accuracy": 0.8468,
+        "macro_f1": 0.8465,
+        "clickbait_recall": 0.8065,
+        "fp_rate": 0.1129,
+        "n": 124
+      },
+      "en": {
+        "accuracy": 0.6613,
+        "macro_f1": 0.6402,
+        "clickbait_recall": 0.4194,
+        "fp_rate": 0.0968,
+        "n": 124
+      }
+    },
+    "per_site": {
+      "bbc": {
+        "accuracy": 0.7857,
+        "macro_f1": 0.44,
+        "clickbait_recall": 0.0,
+        "fp_rate": 0.1538,
+        "n": 14
+      },
+      "buzzfeed": {
+        "accuracy": 0.8438,
+        "macro_f1": 0.8436,
+        "clickbait_recall": 0.875,
+        "fp_rate": 0.1875,
+        "n": 32
+      },
+      "dailymail": {
+        "accuracy": 0.6122,
+        "macro_f1": 0.5778,
+        "clickbait_recall": 0.2963,
+        "fp_rate": 0.0,
+        "n": 49
+      },
+      "ettoday": {
+        "accuracy": 0.8182,
+        "macro_f1": 0.812,
+        "clickbait_recall": 0.6364,
+        "fp_rate": 0.0,
+        "n": 22
+      },
+      "kknews": {
+        "accuracy": 0.7419,
+        "macro_f1": 0.7281,
+        "clickbait_recall": 0.7143,
+        "fp_rate": 0.2,
+        "n": 31
+      },
+      "nypost": {
+        "accuracy": 0.4828,
+        "macro_f1": 0.4596,
+        "clickbait_recall": 0.2222,
+        "fp_rate": 0.0909,
+        "n": 29
+      },
+      "setn": {
+        "accuracy": 0.9,
+        "macro_f1": 0.8958,
+        "clickbait_recall": 0.9565,
+        "fp_rate": 0.1765,
+        "n": 40
+      },
+      "udn": {
+        "accuracy": 0.9032,
+        "macro_f1": 0.8681,
+        "clickbait_recall": 0.8571,
+        "fp_rate": 0.0833,
+        "n": 31
+      }
+    }
+  }
+}
