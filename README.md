@@ -12,8 +12,6 @@
 4. **格式化誘餌**：清單、排名、挑釁問句誘點（「第4個你想不到」）。
 5. **軟文／業配**：標題以情感/知性語氣包裝，內文實為行銷軟文/廣告/業配（對應 WCD general-clickbait，T_LABEL=2）。
 
-完整定義、判準與範例見 [Report.md](Report.md) §1.1；逐筆標註規範見 [ANNOTATION_GUIDE.md](ANNOTATION_GUIDE.md)。
-
 ## 專案目標
 
 - 偵測中文與英文新聞標題是否為標題黨。
@@ -21,8 +19,7 @@
 - 訓練並比較兩種模型：
   - TF-IDF + Logistic Regression baseline
   - fine-tuned multilingual transformer，採用 `xlm-roberta-base`
-    （選用理由：跨語言共用表徵、sentence-pair 建模標題–內文落差、不依賴外部斷詞；
-    完整論述與 baseline 實測對照見 [Report.md](Report.md) §2）
+    （選用理由：跨語言共用表徵、sentence-pair 建模標題–內文落差、不依賴外部斷詞）
 - 建立可互動的 Web 介面。
 - 使用 Flask REST API 串接前端、分類模型與 Gemini API。
 - 對判定為標題黨的文章生成一句話破梗。
@@ -44,18 +41,18 @@
 ### 中文資料集
 
 - 資料集：
-    - WeChat Clickbait Dataset  - `dataset\baseDataSet\all_labeled.csv`
+  - WeChat Clickbait Dataset - `dataset\baseDataSet\all_labeled.csv`
 - 參考專案：[WeSeewy/Chinese-Clickbait](https://github.com/WeSeewy/Chinese-Clickbait)
 - 原始資料來源：[natsusaikou/WeChat-Clickbait](https://github.com/natsusaikou/WeChat-Clickbait)
 - 資料內容：微信公眾號文章的 metadata、標題、內文與標題黨標註。
 
 WCD 原始採三分類標註（`T_LABEL`），依原論文與官方程式碼定義如下：
 
-| T_LABEL | 類別 | 定義 |
-| ------- | ---- | ---- |
-| 0 | non-clickbait | 非標題黨 |
-| 1 | malicious-clickbait（惡意） | 以低俗、色情標題惡意誘導點擊，內文含較多廣告與釣魚連結 |
-| 2 | general-clickbait（一般） | 政府、科普等發布者使用語言技巧（前指、清單體、文藝/知性語氣）吸引注意以擴大影響，多為行銷軟文/品牌內容，相對良性但仍屬誘導 |
+| T_LABEL | 類別                        | 定義                                                                                                                       |
+| ------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 0       | non-clickbait               | 非標題黨                                                                                                                   |
+| 1       | malicious-clickbait（惡意） | 以低俗、色情標題惡意誘導點擊，內文含較多廣告與釣魚連結                                                                     |
+| 2       | general-clickbait（一般）   | 政府、科普等發布者使用語言技巧（前指、清單體、文藝/知性語氣）吸引注意以擴大影響，多為行銷軟文/品牌內容，相對良性但仍屬誘導 |
 
 中文標籤轉換方式（與 WCD 官方程式碼一致——[helper/utils.py](https://github.com/WeSeewy/Chinese-Clickbait/blob/main/helper/utils.py) 亦將 T_LABEL=2 映射為 label=1）：
 
@@ -65,8 +62,7 @@ T_LABEL = 1 or 2 -> label = 1，標題黨
 ```
 
 > 註：T_LABEL=2（general-clickbait）涵蓋大量「文藝/知性語氣標題 + 行銷軟文內文」樣本，
-> 例如標題用問句與引號反諷、內文為完整軟文最後標注「廣告」。此類為本系統 Bug 4/5
-> （標題內文不符、知性語氣掩蓋誘導）的主要來源，詳見 [BugReport.md](BugReport.md)。
+> 例如標題用問句與引號反諷、內文為完整軟文最後標注「廣告」
 
 ### 英文資料集
 
@@ -288,9 +284,9 @@ results/transformer_metrics.json
 
 在 demo 階段，最終分類模型暴露出兩個方向相反的盲點：
 
-| 盲點 | 模型實際行為 | 範例 |
-| --- | --- | --- |
-| 語氣盲點 | 高信心**判標題黨（1）** | LLM 改寫成平實標題、內文不變，模型仍判標題黨（false positive） |
+| 盲點         | 模型實際行為              | 範例                                                                       |
+| ------------ | ------------------------- | -------------------------------------------------------------------------- |
+| 語氣盲點     | 高信心**判標題黨（1）**   | LLM 改寫成平實標題、內文不變，模型仍判標題黨（false positive）             |
 | 量級落差盲點 | 高信心**判非標題黨（0）** | 標題「我是世界冠軍」／內文「學校運動會第一名」，模型漏判（false negative） |
 
 根本原因是 XLM-RoBERTa 以模式匹配為主，依賴主題關鍵字向量，無法分辨「同主題、語氣不同」的細微界線，也無法做「世界 > 學校」這種跨標題與內文的常識量級比較。
@@ -364,10 +360,13 @@ Response：
 
 `gemini_used` 標記此次是否觸發 Gemini 輔助判斷（用於前端顯示 Cascade 標記）。當 Gemini 複核把標題黨判定翻轉為非標題黨時，`is_clickbait` 會更新為 `false` 且不輸出 `spoiler`。
 
-
 ## 注意事項
 
-- 資料集檔案較大，除非作業要求，否則不建議直接 commit。
-- API key、模型 checkpoint、訓練過程產生的 artifacts 應避免放入版本控制。
-- Transformer 模型訓練建議在 Colab GPU 上進行。
-- 本機 CPU 可用於小樣本測試與最終 demo 的單筆推理。
+- Transformer 模型訓練建議在 Colab GPU 上進行
+- 本機 CPU 可用於小樣本測試與最終 demo 的單筆推理
+
+---
+
+## Source code
+
+[Github repo](https://github.com/Jx-study/NLP_Project)
